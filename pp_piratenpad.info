@@ -1,0 +1,5 @@
+; $Id$
+name = Piratenpartei Piratenpads
+description = Block zur Anzeige aktueller Piratenpads eines Teams
+core = 6.x
+version = "6.x-1.0"

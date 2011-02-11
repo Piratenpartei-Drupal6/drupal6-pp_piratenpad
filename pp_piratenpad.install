@@ -1,0 +1,62 @@
+<?php
+
+/**
+ * Implementation of hook_schema().
+ */
+function pp_piratenpad_schema() {
+  $schema['pp_piratenpad'] = array(
+    'description' => t("Stores available public team pads."),
+    'fields' => array(
+      'id' => array(
+        'description' => t("Unique identifier for each {pp_piratenpad} public team pad."),
+        'type' => 'serial',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ),
+      'name' => array(
+        'description' => t("Name of the {pp_piratenpad} public team pad."),
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => FALSE,
+      ),
+      'last_edited' => array(
+        'description' => t("Date and time the {pp_piratenpad} public team pad was last edited."),
+        'type' => 'int',
+        'not null' => FALSE,
+      ),
+      'editor' => array(
+        'description' => t("The editor of the {pp_piratenpad} public team pad."),
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => FALSE,
+      ),
+      'url' => array(
+        'description' => t("The URL of the {pp_piratenpad} public team pad."),
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => FALSE,
+      ),
+    ),
+    'indexes' => array('name' => array('name'), 'last_edited' => array('last_edited')),
+    'primary key' => array('id'),
+  );
+
+  return $schema;
+}
+
+/**
+ * Implementation of hook_install().
+ */
+function pp_piratenpad_install() {
+  // Create tables.
+  drupal_install_schema('pp_piratenpad');
+
+}
+
+/**
+ * Implementation of hook_uninstall().
+ */
+function pp_piratenpad_uninstall() {
+  // Remove tables.
+  drupal_uninstall_schema('pp_piratenpad');
+}
