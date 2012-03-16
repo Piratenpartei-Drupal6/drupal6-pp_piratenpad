@@ -25,7 +25,7 @@ function pp_piratenpad_admin_form() {
   );
 
   $form['global_account']['pp_piratenpad_password'] = array(
-    '#type' => 'password',
+    '#type' => 'textfield',
     '#title' => t('Password'),
     #'#description' => t("If your Twitter account is protected, or you wish to post to Twitter from Drupal, you must enter the Twitter account's password."),
     '#default_value' => variable_get('pp_piratenpad_password', NULL),

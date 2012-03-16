@@ -1,5 +1,7 @@
 ; $Id$
+package = Piratenpartei
 name = Piratenpartei Piratenpads
-description = Block zur Anzeige aktueller Piratenpads eines Teams
+description = Zeigt den Block zur Anzeige aktueller Piratenpads eines Teams an.
+dependencies[] = pp_admin_menu
 core = 6.x
-version = "6.x-1.0"
+version = "6.x-1.3"

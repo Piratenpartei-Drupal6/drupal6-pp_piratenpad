@@ -6,13 +6,26 @@
 function pp_piratenpad_menu() {
   $items = array();
 
-  $items['admin/settings/pp_piratenpad'] = array(
+  $items['admin/settings/piraten/piratenpad'] = array(
     'title' => 'Piratenpads',
-    'description' => 'Piratenpads module settings',
+    'description' => 'Team user und Darstellungs-Einstellungen',
     'page callback' => 'drupal_get_form',
     'page arguments' => array('pp_piratenpad_admin_form'),
-    'access arguments' => array('administer site configuration'),
+    'access arguments' => array('administer pp_piratenpad'),
     'file' => 'pp_piratenpad.admin.inc'
+  );
+
+  $items['admin/settings/piraten/piratenpad/settings'] = array(
+    'title' => 'Settings',
+    'type' => MENU_DEFAULT_LOCAL_TASK,
+  );
+
+  $items['admin/settings/piraten/piratenpad/update'] = array(
+    'title' => 'Update Now',
+    'page callback' => 'pp_piratenpad_update',
+    'access arguments' => array('administer pp_piratenpad'),
+    'type' => MENU_LOCAL_TASK,
+    'weight' => 1,
   );
 
   return $items;
@@ -45,7 +58,7 @@ function pp_piratenpad_help($path, $arg) {
 */
 
 function pp_piratenpad_perm() {
-  return array('access pp_piratenpad content');
+  return array('administer pp_piratenpad');
 } // function pp_piratenpad_perm()
 
 
@@ -58,7 +71,7 @@ function pp_piratenpad_perm() {
 function pp_piratenpad_block($op='list', $delta=0) {
 	// listing of blocks, such as on the admin/block page
 		if ($op == "list") {
-			$block[0]["info"] = t('Aktuelle Piratenpads');
+			$block[0]["info"] = "Piraten - ".t('Aktuelle Piratenpads');
 			return $block;
 		} else if ($op == 'view') {
 			// our block content
@@ -97,6 +110,25 @@ function pp_piratenpad_block($op='list', $delta=0) {
 /**
 *
 */
+function pp_piratenpad_update() {
+	// run cron
+		pp_piratenpad_cron();
+
+	// clear cache
+		cache_clear_all(NULL, 'pp_piratenpad');
+
+	// load
+		$sql = "SELECT COUNT(*) AS `count` FROM {pp_piratenpad}";
+		$result = db_query($sql);
+		$data = db_fetch_array($result);
+
+	// return
+		return $data["count"]." ".t("pads inserted");
+}
+
+/**
+*
+*/
 function pp_piratenpad_cron() {
 	$url = variable_get('pp_piratenpad_url', NULL);
 	$email = variable_get('pp_piratenpad_email', NULL);
@@ -108,101 +140,102 @@ function pp_piratenpad_cron() {
 		"password" => $password,
 	);
 
+	$debug = false;
+
 	if (!empty($url) && !empty($email) && !empty($password)) {
+		// 0. prepare debug
+			if ($debug) echo "<pre>";
+
 		// 1. get the piratepad team cookies
-			$_url = "http://".$url;
+			$_url = "https://".$url."/ep/account/sign-in?cont=https".urlencode("://".$url."/ep/padlist/all-pads");
 			$_headers = array();
 			$_data = array();
 
 			$response = drupal_http_request($_url, $_headers, 'GET', http_build_query($_data), 0);
-			#print_r($response);
-			#die();
+#			if ($debug) print_r($response);
+#			if ($debug) die();
 			$_team_cookie = $response->headers['Set-Cookie'];
 			preg_match_all("/(E\w=\w*;)/", $_team_cookie, $regs);
-			#print_r($regs);
-			$_team_cookie = "";
-			foreach($regs[1] as $reg) {
-				$_team_cookie .= $reg." ";
-			}
+#			if ($debug) print_r($regs);
+			$_team_cookie = array_pop($regs[1]);
 			$_cookie = trim($_team_cookie);
-			#print_r($_cookie);
+#			if ($debug) print_r($_cookie);
 			$_headers = array('Cookie' => $_cookie);
 			$_url = $response->headers['Location'];
+#			if ($debug) die();
 
 		// 2. get the piratepad cookie
 			$response = drupal_http_request($_url, $_headers, 'GET', http_build_query($_data), 0);
-			#print_r($response);
-			#die();
+#			if ($debug) print_r($response);
+#			if ($debug) die();
 			$_cookie = $response->headers['Set-Cookie'];
 			preg_match_all("/(E\w=\w*;)/", $_cookie, $regs);
-			#print_r($regs);
+#			if ($debug) print_r($regs);
 			$_cookie = trim($_team_cookie);
 			foreach($regs[1] as $reg) {
 				$_cookie .= " ".$reg;
 			}
 			$_cookie = trim($_cookie);
-			#print_r($_cookie);
+#			if ($debug) print_r($_cookie);
 			$_headers = array('Cookie' => $_cookie);
 			$_url = $response->headers['Location'];
+#			if ($debug) die();
 
 		// 3. get the 1st redirect to the login screen
 			$response = drupal_http_request($_url, $_headers, 'GET', http_build_query($_data), 0);
-			#print_r($response);
-			#die();
+#			if ($debug) print_r($response);
+#			if ($debug) die();
 			$_url = $response->headers['Location'];
 
-		// 4. get the 2nd redirect to the login screen
+		// 4. get the login screen
 			$response = drupal_http_request($_url, $_headers, 'GET', http_build_query($_data), 0);
-			#print_r($response);
-			#die();
-			$_url = $response->headers['Location'];
+#			if ($debug) print_r($response);
+#			if ($debug)die();
 
-		// 5. get the login screen
-			$response = drupal_http_request($_url, $_headers, 'GET', http_build_query($_data), 0);
-			#print_r($response);
-			#die();
-
-		// 6. do the login
+		// 5. do the login
+#			if ($debug) print_r($_url);
 			$_headers['Content-Type'] = "application/x-www-form-urlencoded";
-			$_url = "http://".$url."/ep/account/sign-in?cont=".urlencode("http://".$url."/ep/padlist/all-pads");
+			#$_url = "http://".$url."/ep/account/sign-in?cont=".urlencode("https://".$url."/ep/padlist/all-pads");
+			#$_url = "http://".$url."/ep/account/sign-in?cont=".urlencode("https://".$url."/");
 			$_data = array(
 				"email" => $email,
 				"password" => $password,
 			);
-			#print_r($_data);
+#			if ($debug) print_r($_data);
 			$response = drupal_http_request($_url, $_headers, 'POST', http_build_query($_data, '', '&'), 0);
-			#print_r($response);
-			#die();
+#			if ($debug) print_r($response);
+#			if ($debug) die();
 			$_url = $response->headers['Location'];
 
-		// 7. get the result page
+		// 6. get the result page
 			unset($_headers['Content-Type']);
 			$_data = array();
 			$response = drupal_http_request($_url, $_headers, 'GET', http_build_query($_data), 0);
-			#print_r($response);
+#			if ($debug) print_r($response);
+#			if ($debug) die();
 
 			$pads = array();
 
 			if (strpos($response->data, "padlock.gif") === false) {
 				// no padlock
-					preg_match_all("/<td\s*class=\"title first\">(.*)?</", $response->data, $regs);
+					preg_match_all("/<td\s*class=\"title first\">(.*)?<\//", $response->data, $regs);
 			} else {
 				// padlock found
-					preg_match_all("/<td\s*class=\"title\">(.*)?</", $response->data, $regs);
+					preg_match_all("/<td\s*class=\"title first\">(.*)?<\//", $response->data, $regs);
 			}
-			#print_r($regs);
-			#die();
+#			if ($debug) print_r($regs);
+#			if ($debug) die();
 
 			foreach($regs[1] as $id => $reg) {
 				preg_match_all("/(\/.*?)?\"/", $reg, $regs2);
-				#print_r($regs2);
+#				if ($debug) print_r($regs2);
 				$pads[$id] = array();
 				$pads[$id]["name"] = strip_tags($reg);
 				$pads[$id]["url"] = "http://".$url.$regs2[1][1];
 			}
 
 			preg_match_all("/<td\s*class=\"lastEditedDate\">(.*)?</", $response->data, $regs);
-			#print_r($regs);
+#			if ($debug) print_r($regs);
 			foreach($regs[1] as $id => $reg) {
 				$edited = strip_tags($reg);
 				$edited = str_replace("ago", "", $edited);
@@ -212,35 +245,42 @@ function pp_piratenpad_cron() {
 			}
 
 			preg_match_all("/<td\s*class=\"editors\">(.*)?</", $response->data, $regs);
-			#print_r($regs);
+#			if ($debug) print_r($regs);
 			foreach($regs[1] as $id => $reg) {
 				$pads[$id]["editor"] = strip_tags($reg);
 			}
-			#print_r($pads);
-			#die();
+#			if ($debug) print_r($pads);
+#			if ($debug) die();
 
 		// 8. sign out
-			$_url = "http://".$url."/ep/account/sign-out";
+			$_url = "https://".$url."/ep/account/sign-out";
 			$response = drupal_http_request($_url, $_headers, 'GET', http_build_query($_data), 0);
-			#print_r($response);
-			#die();
+#			if ($debug) print_r($response);
+#			if ($debug) die();
 
 		// 9. check pads public status
 			foreach($pads as $id => $pad) {
-				#print_r($pad);
-				$response = drupal_http_request($pad["url"], $_headers, 'GET', http_build_query($_data), 0);
-				#print_r($response->code);
+#				if ($debug) print_r($pad);
+				$url = str_replace("http://", "https://", $pad["url"]);
+#				if ($debug) print_r($url);
+				$response = drupal_http_request($url, $_headers, 'GET', http_build_query($_data), 0);
+#				if ($debug) print_r($response->code);
+#				if ($debug) print_r($response);
 				if ($response->code != 200)
 					unset($pads[$id]);
 			}
-			#print_r($pads);
-			#die();
+#			if ($debug) print_r($pads);
+#			if ($debug) die();
 
 		// 10. store to database
 			db_query("TRUNCATE TABLE {pp_piratenpad}");
 			foreach($pads as $id => $pad) {
 				drupal_write_record("pp_piratenpad", $pad);
+				watchdog('pp_piratenpad', t("Pad: ".$pad["name"]));
 			}
+
+		// 11. stop debug
+			if ($debug) echo "</pre>";
 	} else {
 		watchdog('pp_piratenpad', t("Cron run failed: Missing variables"), $vars, WATCHDOG_ERROR);
 	}
