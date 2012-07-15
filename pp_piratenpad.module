@@ -273,7 +273,9 @@ function pp_piratenpad_cron() {
 #			if ($debug) die();
 
 		// 10. store to database
-			db_query("TRUNCATE TABLE {pp_piratenpad}");
+			if (sizeof($pads) > 0)
+				db_query("TRUNCATE TABLE {pp_piratenpad}");
+
 			foreach($pads as $id => $pad) {
 				drupal_write_record("pp_piratenpad", $pad);
 				watchdog('pp_piratenpad', t("Pad: ".$pad["name"]));
